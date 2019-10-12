@@ -128,12 +128,12 @@ async function runOperations() {
     lastName: 'Smalls',
     team: 'Belka'
   });
-  findTeam();
-  readPerson({
+  await findTeam();
+  await readPerson({
     firstName: 'Sarah',
     lastName: 'Smalls'
   });
- // printTeams();
+ // await printTeams();
 
 }
 
