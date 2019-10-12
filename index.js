@@ -2,8 +2,8 @@
 
 const Teams = require('./models/teams.js');
 const People = require('./models/people.js');
-const Validator = require('./lib/validator.js');
-// const uuidValidate = require('uuid-validate');
+const validator = require('./lib/validator.js');
+const uuidValidate = require('uuid-validate');
 
 //.  0.    1.      2.     3
 // node index.js.  ??    ??
@@ -46,8 +46,8 @@ async function findTeam(val) {
 
   let result = {};
 
-  if (Validator.isString(val)) result = await teams.read('name', val);
-  else if (Validator.isUUID(val)) result = await teams.read('id', val);
+  if (validator.isString(val)) result = await teams.read('name', val);
+  else if (validator.isUUID(val)) result = await teams.read('id', val);
 
   return result;
 }
@@ -57,6 +57,7 @@ async function readPerson(person) {
   // go through and read the people database
   // find people that match whatever params this function
   // has
+  return people.read("id", person.id);
 }
 
 async function updatePerson(id, newPersonData) {
@@ -66,18 +67,58 @@ async function updatePerson(id, newPersonData) {
   // if they did
   // you need to verify the team they are now in exists
   // and you need to verify the team they left still has some people
+  let person = people.read("id", id);
+  if(person==={}){
+    people.create(newPersonData);
+  }else if(!('team' in person) || !('team' in newPersonData) ||  person.team===newPersonData.team) { 
+    people.update(person.id, newPersonData);
+  }else{
+    let count = people.countElements("team", person.team);
+    if(count === 1){
+      teams.delete(person.team);
+    }
+    people.update(person.id, newPersonData);
+  }
+
 }
 
-async function deletePerson() {
+async function deletePerson(id) {
   // if you delete a person and their team
   // no longer has people
   // you should delete the team!
+  let person = people.read("id", id);
+  if (person==={}){
+    console.log("person not found");
+  } else if(!('team' in person)) { 
+    people.delete(id);
+  } else{
+    let count = people.countElements("team", person.team);
+    if (count === 1){
+      teams.delete(person.team);
+    }
+    people.delete(person.id);
+  }
 }
 
 async function printTeams() {
   // for each team
   // print the name
   // print the members of that team
+  await teams.read();
+  teams.forEach(team => {
+    console.log("\n"+ team.name);
+    people.forEach(person => {
+      if ("team" in person && person.team === team.id){
+        console.log("\t"+person.firstName+" "+person.lastName);
+      }
+    });  
+  });
+  console.log("\nPeople without team");
+  people.forEach(person => {
+    if (!("team" in person) || !person.team){
+      console.log("\t"+person.firstName+" "+person.lastName);
+    }
+  });  
 }
 
 async function runOperations() {
@@ -85,8 +126,16 @@ async function runOperations() {
   await createPerson({
     firstName: 'Sarah',
     lastName: 'Smalls',
-    team: 'Yellow Rhino'
+    team: 'Belka'
   });
+  findTeam();
+  readPerson({
+    firstName: 'Sarah',
+    lastName: 'Smalls'
+  });
+ // printTeams();
+
 }
+
 
 runOperations();

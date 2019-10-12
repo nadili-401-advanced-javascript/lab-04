@@ -3,8 +3,7 @@
 const fs = require('fs');
 const util = require('util');
 const uuid = require('uuid/v4');
-// const validator = require('../lib/validator.js');
-
+const validator = require('../lib/validator.js');
 const readFile = util.promisify(fs.readFile);
 const writeFile = util.promisify(fs.writeFile);
 
@@ -47,11 +46,12 @@ class Model {
       this.database.push(record);
 
       // write my changed database back to the file
-      await writeFile(this.file, JSON.stringify(this.database));
+      if(this.file !== null) {
+        await writeFile(this.file, JSON.stringify(this.database));
+      }
 
       return record;
     }
-
     return 'Invalid schema';
   }
 
@@ -84,22 +84,52 @@ class Model {
     // [async] write data to file
     // make sure your change is in this.database
     // write this.database to file
+    this.database.forEach((el) => {
+      if(el.id===id){
+        for (let fieldName in item.fields){
+          el[fieldName] = item[fieldName];
+        }
+      }
+    })
+    // [async] write the new (smaller) this.database to the file
+    await writeFile(this.file, JSON.stringify(this.database));
+    
   }
 
   // CRUD: delete
   async delete(id) {
+    let dbLength = this.database.length;
     // find this.database object where object.id === id (forEach??)
     // remove that object (map??)
+    this.database.forEach((el, index) => {
+      if(el.id===id){
+        this.database.splice(index, 1);
+      }
+    })
+    if (this.database.length !== dbLength){
     // [async] write the new (smaller) this.database to the file
+    await writeFile(this.file, JSON.stringify(this.database));
+    }
   }
 
   // Validation
   sanitize(item) {
     // do something to check that item is valid
     // against this.schema
-
+    //return validator.isValid(this.schema, item);
     return true;
   }
+
+  countElements(key, val){
+    let count = 0;
+    this.database.forEach(el => {
+      if (key in el&&el[key]===val){
+        count+=1;
+      }
+    })
+    return count;
+  }
+
 }
 
 module.exports = Model;
